@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // ==UserScript==
-// @name      Add button to copy toot's url
+// @name      Mastodonに引用ボタンを追加する
 // @name:en      Add button to copy toot's url
 // @name:ja      Mastodonに引用ボタンを追加する
 // @namespace    http://www.eniehack.net/~eniehack/works/firefox-userscripts
