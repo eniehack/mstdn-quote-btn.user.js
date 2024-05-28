@@ -4,7 +4,7 @@
 // @name:en      Add button to copy toot's url
 // @name:ja      Mastodonに引用ボタンを追加する
 // @namespace    http://www.eniehack.net/~eniehack/works/firefox-userscripts
-// @version      0.2.0
+// @version      0.2.1
 // @description:en  Add button to copy toot's url for quote toot on Mastodon's deck UI
 // @description:ja  MastodonのDeck UIにtootを引用するためのURLコピーボタンをboostボタンの隣に追加します。
 // @author       eniehack
@@ -22,8 +22,6 @@
 /*jshint esversion: 8 */
 
 (async () => {
-  const INTERVAL = 1000;
-
   const insertBefore = (newNode, existingNode) => {
     existingNode.parentNode.insertBefore(newNode, existingNode.previousSibling);
   };
@@ -86,41 +84,65 @@
     insertBefore(qtbtn, target);
   };
 
+  const callback = (entries, observer) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        insertQuoteButton(entry.target);
+      } else {
+        const quotebtn = entry.target.querySelector(".quote-icon");
+        if (quotebtn === null) continue;
+        quotebtn.remove();
+      }
+    }
+  };
+
+  const mutationObservers = [];
+
   setTimeout(
     () => {
-      const target = document.querySelector(
+      //console.debug(target);
+      const mutationObserverTargets = document.querySelectorAll(
         "div.column > div.scrollable > div.item-list",
       );
-      console.log(target);
 
-      for (const article of document.querySelectorAll("article")) {
-        insertQuoteButton(article);
-      }
+      const io = new IntersectionObserver(callback);
 
       const mutationObserverConfig = {
         attributes: false,
         childList: true,
         subtree: false,
       };
-      const mutObsvr = new MutationObserver((mutations, observer) => {
-        for (const mutation of mutations) {
-          if (mutation.addedNodes.length < 1) continue;
-          for (const node of mutation.addedNodes) {
-            if (node.tagName !== "ARTICLE") continue;
-            observer.disconnect();
-            insertQuoteButton(node);
-            console.log("insertQuoteButton");
-            observer.observe(target, mutationObserverConfig);
+      mutationObserverTargets.forEach((target) => {
+        const mo = new MutationObserver((mutations, observer) => {
+          for (const mutation of mutations) {
+            if (0 < mutation.addedNodes.length) {
+              for (const node of mutation.addedNodes) {
+                if (node.tagName !== "ARTICLE") continue;
+                io.observe(node);
+              }
+            }
+            if (0 < mutation.removedNodes.length) {
+              mutation.removedNodes.forEach((node) => {
+                io.unobserve(node);
+              });
+            }
+            //console.log(mutation);
           }
-          console.log(mutation);
-        }
+        });
+        mo.observe(target, mutationObserverConfig);
+        mutationObservers.push(mo);
       });
-      mutObsvr.observe(target, mutationObserverConfig);
+
+      //console.debug(articles.length);
+      const articles = document.querySelectorAll("article");
+      articles.forEach((article) => {
+        io.observe(article);
+      });
     },
     await GM.getValue("insert_before_second", 3000),
   );
 
-  document.removeEventListener("unload", () => {
-    clearInterval(timer);
+  document.addEventListener("unload", () => {
+    mutationObservers.forEach((mo) => mo.disconnect());
   });
 })();
